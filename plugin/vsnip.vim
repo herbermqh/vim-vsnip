@@ -7,7 +7,7 @@ let g:loaded_vsnip = 1
 " variable
 "
 let g:vsnip_extra_mapping = get(g:, 'vsnip_extra_mapping', v:true)
-let g:vsnip_snippet_dir = get(g:, 'vsnip_snippet_dir', expand('~/.vsnip'))
+let g:vsnip_snippet_dir = get(g:, 'vsnip_snippet_dir', expand('~/Documents/nvim/vsnip'))
 let g:vsnip_snippet_dirs = get(g:, 'vsnip_snippet_dirs', [])
 let g:vsnip_sync_delay = get(g:, 'vsnip_sync_delay', 0)
 let g:vsnip_choice_delay = get(g:, 'vsnip_choice_delay', 500)
