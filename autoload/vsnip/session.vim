@@ -47,10 +47,14 @@ endfunction
 " merge.
 "
 function! s:Session.merge(session) abort
+  call s:TextEdit.apply(self.bufnr, self.snippet.sync())
+  call self.store(self.changenr)
+
   call a:session.expand()
   call self.snippet.merge(self.tabstop, a:session.snippet)
   call self.snippet.insert(deepcopy(a:session.snippet.position), a:session.snippet.children)
   call s:TextEdit.apply(self.bufnr, self.snippet.sync())
+  call self.store(changenr())
 endfunction
 
 "
@@ -128,9 +132,9 @@ endfunction
 "
 function! s:Session.select(jump_point) abort
   let l:pos = s:Position.lsp_to_vim('%', a:jump_point.range.end)
-  call cursor([l:pos[0], l:pos[1] - 1]) " Use `a:jump_point.range.end as inclusive position
+  call cursor([l:pos[0], l:pos[1] - (&selection !~# 'exclusive')])
 
-  let l:select_length = strchars(a:jump_point.placeholder.text()) - 1
+  let l:select_length = strchars(a:jump_point.placeholder.text()) - (&selection !~# 'exclusive')
   let l:cmd = ''
   let l:cmd .= mode()[0] ==# 'i' ? "\<Esc>l" : ''
   let l:cmd .= printf('v%s', l:select_length > 0 ? l:select_length . 'h' : '')
@@ -153,7 +157,7 @@ function! s:Session.move(jump_point) abort
 
   call cursor(l:pos)
 
-  if l:pos[1] > strchars(getline(l:pos[0]))
+  if l:pos[1] > strlen(getline(l:pos[0]))
     startinsert!
   else
     startinsert
@@ -169,14 +173,30 @@ function! s:Session.refresh() abort
 endfunction
 
 "
-" on_insert_leave.
+" on_insert_leave
 "
 function! s:Session.on_insert_leave() abort
   call self.flush_changes()
 endfunction
 
 "
-" on_text_changed.
+" on_insert_char_pre
+"
+function! s:Session.on_insert_char_pre(char) abort
+  if a:char =~# '^[:print:]\+$'
+    let l:range = self.snippet.range()
+    let l:position = s:Position.cursor()
+    let l:is_out_of_range = v:false
+    let l:is_out_of_range = l:is_out_of_range || l:position.line < l:range.start.line || (l:position.line == l:range.start.line && l:position.character < l:range.start.character)
+    let l:is_out_of_range = l:is_out_of_range || l:position.line > l:range.end.line || (l:position.line == l:range.end.line && l:position.character > l:range.end.character)
+    if l:is_out_of_range
+      call vsnip#deactivate()
+    endif
+  endif
+endfunction
+
+"
+" on_text_changed
 "
 function! s:Session.on_text_changed() abort
   if self.bufnr != bufnr('%')
@@ -188,7 +208,6 @@ function! s:Session.on_text_changed() abort
   " save state.
   if self.changenr != l:changenr
     call self.store(self.changenr)
-    let self.changenr = l:changenr
     if has_key(self.changenrs, l:changenr)
       let self.tabstop = self.changenrs[l:changenr].tabstop
       let self.snippet = self.changenrs[l:changenr].snippet
@@ -249,5 +268,6 @@ function! s:Session.store(changenr) abort
   \   'tabstop': self.tabstop,
   \   'snippet': deepcopy(self.snippet)
   \ }
+  let self.changenr = a:changenr
 endfunction
 
